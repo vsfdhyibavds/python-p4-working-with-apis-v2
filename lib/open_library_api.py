@@ -3,55 +3,101 @@ import json
 
 
 class Search:
+    """
+    A class to interact with the Open Library Search API.
+    """
 
-    def get_search_results(self):
-        search_term = "the lord of the rings"
+    def get_search_results(self, search_term="the lord of the rings", fields=None, limit=1):
+        """
+        Get raw content response from the Open Library API for a given search term.
+
+        Args:
+            search_term (str): The book title to search for.
+            fields (list): List of fields to include in the response.
+            limit (int): Number of results to limit the response to.
+
+        Returns:
+            bytes: Raw content of the response.
+        """
+        if fields is None:
+            fields = ["title", "author_name"]
 
         search_term_formatted = search_term.replace(" ", "+")
-        fields = ["title", "author_name"]
-        # formats the list into a comma separated string
-        # output: "title,author_name"
         fields_formatted = ",".join(fields)
-        limit = 1
 
         URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
 
-        response = requests.get(URL)
-        return response.content
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+            return response.content
+        except requests.RequestException as e:
+            print(f"Error fetching data from Open Library API: {e}")
+            return None
 
-    def get_search_results_json(self):
-        search_term = "the lord of the rings"
+    def get_search_results_json(self, search_term="the lord of the rings", fields=None, limit=1):
+        """
+        Get JSON response from the Open Library API for a given search term.
+
+        Args:
+            search_term (str): The book title to search for.
+            fields (list): List of fields to include in the response.
+            limit (int): Number of results to limit the response to.
+
+        Returns:
+            dict or None: Parsed JSON response or None if error occurs.
+        """
+        if fields is None:
+            fields = ["title", "author_name"]
 
         search_term_formatted = search_term.replace(" ", "+")
-        fields = ["title", "author_name"]
         fields_formatted = ",".join(fields)
-        limit = 1
 
         URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
-        print(URL)
-        response = requests.get(URL)
-        return response.json()
+        print(f"Requesting URL: {URL}")
 
-    def get_user_search_results(self, search_term):
-        search_term_formatted = search_term.replace(" ", "+")
-        fields = ["title", "author_name"]
-        fields_formatted = ",".join(fields)
-        limit = 1
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Error fetching data from Open Library API: {e}")
+            return None
 
-        URL = f"https://openlibrary.org/search.json?title={search_term_formatted}&fields={fields_formatted}&limit={limit}"
+    def get_user_search_results(self, search_term, fields=None, limit=1):
+        """
+        Get formatted search result string for a user-provided search term.
 
-        response = requests.get(URL).json()
-        response_formatted = f"Title: {response['docs'][0]['title']}\nAuthor: {response['docs'][0]['author_name'][0]}"
-        return response_formatted
+        Args:
+            search_term (str): The book title to search for.
+            fields (list): List of fields to include in the response.
+            limit (int): Number of results to limit the response to.
+
+        Returns:
+            str: Formatted string with title and author or error message.
+        """
+        if fields is None:
+            fields = ["title", "author_name"]
+
+        response = self.get_search_results_json(search_term, fields, limit)
+        if response is None:
+            return "Failed to retrieve data from the API."
+
+        docs = response.get("docs")
+        if not docs:
+            return "No results found."
+
+        try:
+            title = docs[0].get("title", "N/A")
+            author = docs[0].get("author_name", ["N/A"])[0]
+            return f"Title: {title}\nAuthor: {author}"
+        except (IndexError, KeyError, TypeError):
+            return "Error processing the API response."
 
 
-# results = Search().get_search_results()
-# print(results)
-
-# results_json = Search().get_search_results_json()
-# print(json.dumps(results_json, indent=1))
-
-search_term = input("Enter a book title: ")
-result = Search().get_user_search_results(search_term)
-print("Search Result:\n")
-print(result)
+if __name__ == "__main__":
+    search_term = input("Enter a book title: ")
+    searcher = Search()
+    result = searcher.get_user_search_results(search_term)
+    print("Search Result:\n")
+    print(result)
